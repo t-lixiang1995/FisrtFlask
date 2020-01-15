@@ -3,6 +3,9 @@ import time
 from flask import Flask
 
 from flask_sqlalchemy import SQLAlchemy
+
+from MyLogger import Logger
+from common.errors import BaseError, OrmError
 from .models import *
 from flask import jsonify,g
 from common import sqlhelper
@@ -48,6 +51,26 @@ def create_app():
             "type": "",
             "message": "用户认证失败"
         }), 401
+
+    @app.errorhandler(BaseError)
+    def custom_error_handler(e):
+        if e.level in [BaseError.LEVEL_INFO, BaseError.LEVEL_WARN, BaseError.LEVEL_ERROR]:
+            if isinstance(e, OrmError):
+                app.logger.error('%s %s' % (e.parent_error, e))
+            else:
+                if e.level is BaseError.LEVEL_INFO:
+                    Logger().logger.info('INFO信息: %s %s' % (e.extras, e))
+                    #app.logger.info('INFO信息: %s %s' % (e.extras, e))
+                elif e.level is BaseError.LEVEL_WARN:
+                    Logger('error.log', level='error').logger.error('告警信息: %s %s' % (e.extras, e))
+                    #app.logger.error('告警信息: %s %s' % (e.extras, e))
+                else:
+                    Logger('error.log', level='error').logger.error('错误信息: %s %s' % (e.extras, e))
+                    #app.logger.error('错误信息: %s %s' % (e.extras, e))
+        response = jsonify(e.to_dict())
+        response.status_code = e.status_code
+        return response
+
     app.json_encoder = JSONEncoder
     app.debug = True
     app.secret_key = 'sdiusdfsdf'#自定义的session秘钥

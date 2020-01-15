@@ -3,13 +3,16 @@
 # @File : userManage.py
 # @Software: PyCharm
 from flask import Blueprint, request,jsonify
-from app.models.user import User, Role, Resource, Enterprise
+
+from MyLogger import Logger
+from app.models.log import Last_Online
+from app.models.user import User, Resource
 from datetime import datetime
 from app import db, auth
 from flask import g
 
 from app.routes import very_permission
-
+from common.errors import ValidationError
 UserManage = Blueprint('usermanage', __name__)
 
 
@@ -19,35 +22,37 @@ UserManage = Blueprint('usermanage', __name__)
 def getCurrentUserInfo():
     if request.method == 'GET':
         api_response = {
-            "code": 200,
-            "type": "",
-            "message": "请求成功"
+            "code": 0,
+            "msg": "success"
         }
         try:
             currResource = Resource.query.filter(Resource.perms == "modules:usermanage:info").first()
             if currResource==None:
                 api_response["code"] = 401
-                api_response["message"] = "当前操作权限实体不存在"
+                api_response["msg"] = "当前操作权限实体不存在"
                 return jsonify(api_response), 401
             very = very_permission(currResource.id)
             if very==False:
                 api_response["code"] = 401
-                api_response["message"] = "该账户无操作权限"
+                api_response["msg"] = "该账户无操作权限"
                 return jsonify(api_response), 401
             else:
+                data = []
                 user = User.query.filter(User.accName == g.user).first()
                 if user == None:
                     api_response["code"] = 400
-                    api_response["message"] = "该账户不存在"
+                    api_response["msg"] = "该账户不存在"
                     return jsonify(api_response), 400
-                response = dict(accName=user.accName, userID=user.userID, accType=user.role_id, userName=user.userName,
+                data.append(dict(accName=user.accName, userID=user.userID, accType=user.role_id, userName=user.userName,
                                 accAttr=user.accAttr, etpName=user.etpName, userDP=user.userDP, userMail=user.userMail,
-                                userPhone=user.userPhone, userTel=user.userTel)
-                return jsonify(response)
+                                userPhone=user.userPhone, userTel=user.userTel))
+                response = dict(list=data)
+                api_response['result'] = response
+                return jsonify(api_response)
         except Exception as e:
-            #print(e)
+            Logger('error.log', level='error').logger.error("[获取当前用户信息异常]accName:【%s】%s"  % (g.user, e))
             api_response["code"] =  500
-            api_response["message"] = "服务器未知错误"
+            api_response["msg"] = "服务器未知错误"
             return jsonify(api_response),500
 
 
@@ -57,34 +62,37 @@ def getCurrentUserInfo():
 def deleteUserInfo(accName):
     if request.method == 'GET':
         api_response = {
-            "code": 200,
-            "type": "",
-            "message": "请求成功"
+            "code": 0,
+            "msg": "success"
         }
         try:
             currResource = Resource.query.filter(Resource.perms == "modules:usermanage:delete").first()
             if currResource==None:
                 api_response["code"] = 401
-                api_response["message"] = "当前操作权限实体不存在"
+                api_response["msg"] = "当前操作权限实体不存在"
                 return jsonify(api_response), 401
             very = very_permission(currResource.id)
             if very==False:
                 api_response["code"] = 401
-                api_response["message"] = "该账户无操作权限"
+                api_response["msg"] = "该账户无操作权限"
                 return jsonify(api_response), 401
             else:
                 user = User.query.filter(User.accName == accName).first()
                 if user == None:
                     api_response["code"] = 400
-                    api_response["message"] = "删除失败，账户不存在"
+                    api_response["msg"] = "删除失败，账户不存在"
                     return jsonify(api_response), 400
                 db.session.delete(user)
-                db.session.commit()
+                try:
+                    db.session.commit()
+                except Exception as ie:
+                    Logger('error.log', level='error').logger.error("[事务提交失败]accName:【%s】%s" % (accName, ie))
+                    db.session.rollback()
                 return jsonify(api_response)
         except Exception as e:
-            #print(e)
+            Logger('error.log', level='error').logger.error("[删除用户异常]accName:【%s】%s" % (accName, e))
             api_response["code"] =  500
-            api_response["message"] = "服务器未知错误"
+            api_response["msg"] = "服务器未知错误"
             return jsonify(api_response),500
 
 
@@ -94,35 +102,37 @@ def deleteUserInfo(accName):
 def getUserInfo(accName):
     if request.method == 'GET':
         api_response = {
-            "code": 200,
-            "type": "",
-            "message": "请求成功"
+            "code": 0,
+            "msg": "success"
         }
         try:
             currResource = Resource.query.filter(Resource.perms == "modules:usermanage:info").first()
             if currResource==None:
                 api_response["code"] = 401
-                api_response["message"] = "当前操作权限实体不存在"
+                api_response["msg"] = "当前操作权限实体不存在"
                 return jsonify(api_response), 401
             very = very_permission(currResource.id)
             if very==False:
                 api_response["code"] = 401
-                api_response["message"] = "该账户无操作权限"
+                api_response["msg"] = "该账户无操作权限"
                 return jsonify(api_response), 401
             else:
+                data = []
                 user = User.query.filter(User.accName == accName).first()
                 if user == None:
                     api_response["code"] = 400
-                    api_response["message"] = "该账户不存在"
+                    api_response["msg"] = "该账户不存在"
                     return jsonify(api_response), 400
-                response = dict(accName=user.accName, userID=user.userID, accType=user.role_id, userName=user.userName,
+                data.append(dict(accName=user.accName, userID=user.userID, accType=user.role_id, userName=user.userName,
                                 accAttr=user.accAttr, etpName=user.etpName, userDP=user.userDP, userMail=user.userMail,
-                                userPhone=user.userPhone, userTel=user.userTel)
-                return jsonify(response)
+                                userPhone=user.userPhone, userTel=user.userTel))
+                response = dict(list=data)
+                api_response['result'] = response
+                return jsonify(api_response)
         except Exception as e:
-            #print(e)
+            Logger('error.log', level='error').logger.error("[获取用户信息异常]accName:【%s】%s" % (accName, e))
             api_response["code"] =  500
-            api_response["message"] = "服务器未知错误"
+            api_response["msg"] = "服务器未知错误"
             return jsonify(api_response),500
 
 
@@ -136,23 +146,22 @@ def getUserList():
         accName = request.args.get("accName", "")
         etpCode = request.args.get("etpCode", "")
         etpName = request.args.get("etpName", "")
-        accType = int(request.args.get("accType", 0))
+        accType = request.args.get("accType", "")
         filters = {User.status == 1}
         api_response = {
-            "code": 200,
-            "type": "",
-            "message": "请求成功"
+            "code": 0,
+            "msg": "success"
         }
         try:
             currResource = Resource.query.filter(Resource.perms == "modules:usermanage:list").first()
             if currResource==None:
                 api_response["code"] = 401
-                api_response["message"] = "当前操作权限实体不存在"
+                api_response["msg"] = "当前操作权限实体不存在"
                 return jsonify(api_response), 401
             very = very_permission(currResource.id)
             if very == False:
                 api_response["code"] = 401
-                api_response["message"] = "该账户无操作权限"
+                api_response["msg"] = "该账户无操作权限"
                 return jsonify(api_response), 401
             else:
                 userList = []
@@ -162,19 +171,25 @@ def getUserList():
                     filters.add(User.accAttr == etpCode)
                 if etpName is not "":
                     filters.add(User.etpName.like("%" + etpName + "%"))
-                if accType is not 0:
-                    filters.add(User.role_id == accType)
+                if accType is not "":
+                    filters.add(User.role_id == int(accType))
                 userlist = User.query.filter(*filters).limit(limit).offset((page - 1) * limit).all()
                 sumList = User.query.filter(*filters).all()
                 for user in userlist:
+                    last_login = Last_Online.query.filter(Last_Online.accName == user.accName).first()
+                    if last_login is None:
+                        lastLogintime = None
+                    else:
+                        lastLogintime = last_login.last_login_time
                     userList.append(dict(accName=user.accName, userName=user.userName, accType=user.role_id,
-                                         userDP=user.userDP, etpName=user.etpName, createTime=user.create_date))
-                result = dict(sumcount=len(sumList), detailcount=len(userlist), data=userList)
-                return jsonify(result)
+                                         userDP=user.userDP, etpName=user.etpName, createTime=user.create_date, lastLogintime=lastLogintime))
+                result = dict(sumcount=len(sumList), detailcount=len(userlist), list=userList)
+                api_response['result'] = result
+                return jsonify(api_response)
         except Exception as e:
-            print(e)
+            Logger('error.log', level='error').logger.error("[获取用户列表异常]accName:【%s】%s" % (accName, e))
             api_response["code"] =  500
-            api_response["message"] = "服务器未知错误"
+            api_response["msg"] = "服务器未知错误"
             return jsonify(api_response),500
 
 
@@ -184,37 +199,44 @@ def getUserList():
 def editUserPermission():
     if request.method == 'POST':
         api_response = {
-            "code": 200,
-            "type": "",
-            "message": "请求成功"
+            "code": 0,
+            "msg": "success"
         }
         try:
             currResource = Resource.query.filter(Resource.perms == "modules:usermanage:update").first()
             if currResource==None:
                 api_response["code"] = 401
-                api_response["message"] = "当前操作权限实体不存在"
+                api_response["msg"] = "当前操作权限实体不存在"
                 return jsonify(api_response), 401
             very = very_permission(currResource.id)
             if very == False:
                 api_response["code"] = 401
-                api_response["message"] = "该账户无操作权限"
+                api_response["msg"] = "该账户无操作权限"
                 return jsonify(api_response), 401
             else:
                 request_json = request.get_json()
-                accName = (request_json['accName'] if ('accName' in request_json) else "")
-                accType = (request_json['accType'] if ('accType' in request_json) else "")
+                if 'accName' not in request_json or request_json['accName'] is "":
+                    raise ValidationError("参数不能为空")
+                accName = request_json['accName']
+                if 'accType' not in request_json or request_json['accType'] is "":
+                    raise ValidationError("参数不能为空")
+                accType = request_json['accType']
                 user = User.query.filter(User.accName == accName).first()
                 if user == None:
                     api_response["code"] = 400
-                    api_response["message"] = "所修改账户不存在"
+                    api_response["msg"] = "所修改账户不存在"
                     return jsonify(api_response), 400
                 user.role_id = accType
-                db.session.commit()
+                try:
+                    db.session.commit()
+                except Exception as ie:
+                    Logger('error.log', level='error').logger.error("[事务提交失败]accName:【%s】%s" % (accName, ie))
+                    db.session.rollback()
                 return jsonify(api_response)
         except Exception as e:
-            print(e)
+            Logger('error.log', level='error').logger.error("[修改角色异常]accName:【%s】%s" % (accName, e))
             api_response["code"] =  500
-            api_response["message"] = "服务器未知错误"
+            api_response["msg"] = "服务器未知错误"
             return jsonify(api_response),500
 
 
@@ -224,53 +246,73 @@ def editUserPermission():
 def createUser():
     if request.method == 'POST':
         api_response = {
-            "code": 200,
-            "type": "",
-            "message": "请求成功"
+            "code": 0,
+            "msg": "success"
         }
         try:
             currResource = Resource.query.filter(Resource.perms == "modules:usermanage:save").first()
             if currResource==None:
                 api_response["code"] = 401
-                api_response["message"] = "当前操作权限实体不存在"
+                api_response["msg"] = "当前操作权限实体不存在"
                 return jsonify(api_response), 401
             very = very_permission(currResource.id)
             if very == False:
                 api_response["code"] = 401
-                api_response["message"] = "该账户无操作权限"
+                api_response["msg"] = "该账户无操作权限"
                 return jsonify(api_response), 401
             else:
                 request_json = request.get_json()
-                accName = (request_json['accName'] if ('accName' in request_json) else "")
-                accType = (request_json['accType'] if ('accType' in request_json) else "")
-                userID = (request_json['userID'] if ('userID' in request_json) else "")
-                userName = (request_json['userName'] if ('userName' in request_json) else "")
-                accAttr = (request_json['accAttr'] if ('accAttr' in request_json) else "")
-                etpName = (request_json['etpName'] if ('etpName' in request_json) else "")
-                userDP = (request_json['userDP'] if ('userDP' in request_json) else "")
-                userMail = (request_json['userMail'] if ('userMail' in request_json) else "")
-                userPhone = (request_json['userPhone'] if ('userPhone' in request_json) else "")
-                userTel = (request_json['userTel'] if ('userTel' in request_json) else "")
-                password = (request_json['password'] if ('password' in request_json) else "")
+                if 'accName' not in request_json or request_json['accName'] is "":
+                    raise ValidationError("参数不能为空")
+                accName = request_json['accName']
+                if 'password' not in request_json or request_json['password'] is "":
+                    raise ValidationError("参数不能为空")
+                password = request_json['password']
+                if 'accType' not in request_json or request_json['accType'] is "":
+                    raise ValidationError("参数不能为空")
+                accType = request_json['accType']
+                if 'userID' not in request_json or request_json['userID'] is "":
+                    raise ValidationError("参数不能为空")
+                userID = request_json['userID']
+                if 'userName' not in request_json or request_json['userName'] is "":
+                    raise ValidationError("参数不能为空")
+                userName = request_json['userName']
+                if 'accAttr' not in request_json or request_json['accAttr'] is "":
+                    raise ValidationError("参数不能为空")
+                accAttr = request_json['accAttr']
+                if 'etpName' not in request_json or request_json['etpName'] is "":
+                    raise ValidationError("参数不能为空")
+                etpName = request_json['etpName']
+                if 'userDP' not in request_json or request_json['userDP'] is "":
+                    raise ValidationError("参数不能为空")
+                userDP = request_json['userDP']
+                if 'userMail' not in request_json or request_json['userMail'] is "":
+                    raise ValidationError("参数不能为空")
+                userMail = request_json['userMail']
+                if 'userPhone' not in request_json or request_json['userPhone'] is "":
+                    raise ValidationError("参数不能为空")
+                userPhone = request_json['userPhone']
+                if 'userTel' not in request_json or request_json['userTel'] is "":
+                    raise ValidationError("参数不能为空")
+                userTel = request_json['userTel']
                 status = (request_json['status'] if ('status' in request_json) else 1)
                 create_user_id = g.user
                 create_date = (request_json['create_date'] if ('create_date' in request_json) else datetime.now())
                 remarks = (request_json['remarks'] if ('remarks' in request_json) else "")
-                if accName == "" or password == "" or accType == "" or userID == "" or userName == "" or accAttr == "" \
-                        or etpName == "" or userDP == "" or userMail == "" or userPhone == "" or userTel == "":
-                    api_response["code"] = 400
-                    api_response["message"] = "请求参数错误"
-                    return jsonify(api_response), 400
                 newUser = User(accName, userID, userName, userMail, userPhone, userTel, password, status,
                                accType, accAttr, etpName, userDP, create_date, create_user_id, remarks)
                 newUser.hash_pwd(password)
                 db.session.add(newUser)
-                db.session.commit()
+                try:
+                    db.session.commit()
+                except Exception as ie:
+                    Logger('error.log', level='error').logger.error("[事务提交失败]accName:【%s】%s" % (accName, ie))
+                    db.session.rollback()
                 return jsonify(api_response)
         except Exception as e:
-            #print(e)
+            Logger('error.log', level='error').logger.error("[添加用户异常]accName:【%s】%s" % (accName, e))
             api_response["code"] =  500
-            api_response["message"] = "服务器未知错误"
+            api_response["msg"] = "服务器未知错误"
             return jsonify(api_response),500
 
 
@@ -280,32 +322,35 @@ def createUser():
 def editUserPassword(oldPassword,password,reppassword):
     if request.method == 'GET':
         api_response = {
-            "code": 200,
-            "type": "",
-            "message": "请求成功"
+            "code": 0,
+            "msg": "success"
         }
         try:
             user = User.query.filter(User.accName == g.user).first()
             if user == None:
                 api_response["code"] = 400
-                api_response["message"] = "该账户不存在"
+                api_response["msg"] = "该账户不存在"
                 return jsonify(api_response), 400
             elif user.very_password(oldPassword)==False:
                 api_response["code"] = 400
-                api_response["message"] = "原始密码输入有误"
+                api_response["msg"] = "原始密码输入有误"
                 return jsonify(api_response)
             elif password != reppassword:
                 api_response["code"] = 400
-                api_response["message"] = "两次密码不一致"
+                api_response["msg"] = "两次密码不一致"
                 return jsonify(api_response)
             else:
                 user.hash_pwd(password)
-                db.session.commit()
+                try:
+                    db.session.commit()
+                except Exception as ie:
+                    Logger('error.log', level='error').logger.error("[事务提交失败]accName:【%s】%s" % (g.user, ie))
+                    db.session.rollback()
                 return jsonify(api_response)
         except Exception as e:
-            #print(e)
+            Logger('error.log', level='error').logger.error("[修改密码异常]accName:【%s】%s" % (g.user, e))
             api_response["code"] =  500
-            api_response["message"] = "服务器未知错误"
+            api_response["msg"] = "服务器未知错误"
             return jsonify(api_response),500
 
 
@@ -315,42 +360,55 @@ def editUserPassword(oldPassword,password,reppassword):
 def editUser():
     if request.method == 'POST':
         api_response = {
-            "code": 200,
-            "type": "",
-            "message": "请求成功"
+            "code": 0,
+            "msg": "success"
         }
         try:
             currResource = Resource.query.filter(Resource.perms == "modules:usermanage:update").first()
             if currResource==None:
                 api_response["code"] = 401
-                api_response["message"] = "当前操作权限实体不存在"
+                api_response["msg"] = "当前操作权限实体不存在"
                 return jsonify(api_response), 401
             very = very_permission(currResource.id)
             if very == False:
                 api_response["code"] = 401
-                api_response["message"] = "该账户无操作权限"
+                api_response["msg"] = "该账户无操作权限"
                 return jsonify(api_response), 401
             else:
                 request_json = request.get_json()
-                accName = (request_json['accName'] if ('accName' in request_json) else "")
-                userID = (request_json['userID'] if ('userID' in request_json) else "")
-                userName = (request_json['userName'] if ('userName' in request_json) else "")
-                accAttr = (request_json['accAttr'] if ('accAttr' in request_json) else "")
-                etpName = (request_json['etpName'] if ('etpName' in request_json) else "")
-                userDP = (request_json['userDP'] if ('userDP' in request_json) else "")
-                userMail = (request_json['userMail'] if ('userMail' in request_json) else "")
-                userPhone = (request_json['userPhone'] if ('userPhone' in request_json) else "")
-                userTel = (request_json['userTel'] if ('userTel' in request_json) else "")
-                if accName == "" or userID == "" or userName == "" or accAttr == "" \
-                        or etpName == "" or userDP == "" or userMail == "" or userPhone == "" or userTel == "":
-                    api_response["code"] = 400
-                    api_response["message"] = "请求参数错误"
-                    return jsonify(api_response), 400
-                user = User.query.filter(User.accName == accName,User.userID == userID,User.userName == userName,
-                                         User.accAttr == accAttr,User.etpName == etpName,User.userDP == userDP).first()
+                if 'accName' not in request_json or request_json['accName'] is "":
+                    raise ValidationError("参数不能为空")
+                accName = request_json['accName']
+                # if 'userID' not in request_json or request_json['userID'] is "":
+                #     raise ValidationError("参数不能为空")
+                # userID = request_json['userID']
+                # if 'userName' not in request_json or request_json['userName'] is "":
+                #     raise ValidationError("参数不能为空")
+                # userName = request_json['userName']
+                # if 'accAttr' not in request_json or request_json['accAttr'] is "":
+                #     raise ValidationError("参数不能为空")
+                # accAttr = request_json['accAttr']
+                # if 'etpName' not in request_json or request_json['etpName'] is "":
+                #     raise ValidationError("参数不能为空")
+                # etpName = request_json['etpName']
+                # if 'userDP' not in request_json or request_json['userDP'] is "":
+                #     raise ValidationError("参数不能为空")
+                # userDP = request_json['userDP']
+                if 'userMail' not in request_json or request_json['userMail'] is "":
+                    raise ValidationError("参数不能为空")
+                userMail = request_json['userMail']
+                if 'userPhone' not in request_json or request_json['userPhone'] is "":
+                    raise ValidationError("参数不能为空")
+                userPhone = request_json['userPhone']
+                if 'userTel' not in request_json or request_json['userTel'] is "":
+                    raise ValidationError("参数不能为空")
+                userTel = request_json['userTel']
+                # user = User.query.filter(User.accName == accName,User.userID == userID,User.userName == userName,
+                #                          User.accAttr == accAttr,User.etpName == etpName,User.userDP == userDP).first()
+                user = User.query.filter(User.accName == accName).first()
                 if user == None:
                     api_response["code"] = 400
-                    api_response["message"] = "该账户不存在"
+                    api_response["msg"] = "该账户不存在"
                     return jsonify(api_response), 400
                 if ('accType' in request_json):
                     user.role_id = request_json['accType']
@@ -363,10 +421,14 @@ def editUser():
                     user.status = request_json['status']
                 if ('remarks' in request_json):
                     user.remarks = request_json['remarks']
-                db.session.commit()
+                try:
+                    db.session.commit()
+                except Exception as ie:
+                    Logger('error.log', level='error').logger.error("[事务提交失败]accName:【%s】%s" % (accName, ie))
+                    db.session.rollback()
                 return jsonify(api_response)
         except Exception as e:
-            #print(e)
+            Logger('error.log', level='error').logger.error("[修改用户信息异常]accName:【%s】%s" % (accName, e))
             api_response["code"] =  500
-            api_response["message"] = "服务器未知错误"
+            api_response["msg"] = "服务器未知错误"
             return jsonify(api_response),500
