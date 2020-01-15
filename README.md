@@ -8,4 +8,4 @@ ssh连接服务器执行命令等功能，包含用户管理与企业管理两�
     python manage.py db init <br/>
     python manage.py db migrate <br/>
     python manage.py db upgrade <br/>
-使用：python manage.py runserver启动服务，若提示有模块没安装，使用pip install命令安装即可。
+使用：python manage.py runserver启动服务，默认端口号8899，若提示有模块没安装，使用pip install命令安装即可。
