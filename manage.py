@@ -19,7 +19,7 @@ manager.add_command('db', MigrateCommand)
 # 自定义命令
     python manage.py runserver 
 """
-manager.add_command("runserver", Server(host='0.0.0.0', port=8899))
+manager.add_command("runserver", Server(host='0.0.0.0', port=8080))
 
 """
 生成当前环境的所有依赖： requirements.txt
