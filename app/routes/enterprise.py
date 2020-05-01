@@ -339,7 +339,7 @@ def downLoad(fileName):
             "msg": "success"
         }
         try:
-            currResource = Resource.query.filter(Resource.perms == "modules:deviceAutoConfig:list").first()
+            currResource = Resource.query.filter(Resource.perms == "modules:enterprise:list").first()
             if currResource==None:
                 api_response["code"] = 401
                 api_response["msg"] = "当前操作权限实体不存在"
@@ -368,23 +368,23 @@ def downLoad(fileName):
                 api_response["msg"] = "文件不存在！"
                 return jsonify(api_response)
         except Exception as e:
-            Logger('error.log', level='error').logger.error("[下载设备自动配置文件异常]accName:【%s】%s" % (g.user, e))
+            Logger('error.log', level='error').logger.error("[下载文件异常]accName:【%s】%s" % (g.user, e))
             api_response["code"] = 400
             api_response["msg"] = "系统异常"
             return jsonify(api_response)
 
 
 #上传图片临时保存文件
-@EnterpriseManage.route('/upLoad/<int:deviceSize>', methods=['POST'])
+@EnterpriseManage.route('/upLoad', methods=['POST'])
 @auth.login_required
-def upload(deviceSize):
+def upload():
     if request.method == 'POST':
         api_response = {
             "code": 0,
             "msg": "success"
         }
         try:
-            currResource = Resource.query.filter(Resource.perms == "modules:deviceAutoConfig:save").first()
+            currResource = Resource.query.filter(Resource.perms == "modules:enterprise:save").first()
             if currResource==None:
                 api_response["code"] = 401
                 api_response["msg"] = "当前操作权限实体不存在"
@@ -403,7 +403,7 @@ def upload(deviceSize):
                     newFilePath = os.path.join(UPLOADFILES_DIRS, filename)
                     file.save(newFilePath)
         except Exception as e:
-            Logger('error.log', level='error').logger.error("[上传设备自动配置文件异常]accName:【%s】%s" % (g.user, e))
+            Logger('error.log', level='error').logger.error("[上传文件异常]accName:【%s】%s" % (g.user, e))
             api_response["code"] = 400
             api_response["msg"] = "系统异常"
             return jsonify(api_response)

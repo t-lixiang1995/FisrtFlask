@@ -57,6 +57,7 @@ class User(db.Model):
 
     def generate_auth_token(self, expiration=3600):
         s = Serializer(os.getenv('SECRET_KEY', 'autodeploynb'), expires_in=expiration)
+        print(os.getenv('SECRET_KEY', 'autodeploynb'))
         expireDate = int(time.time()) + expiration
         return s.dumps({"accName": self.accName,"userName": self.userName, "role": self.role_id,"accAttr": self.accAttr,"userDP": self.userDP,"expireDate": expireDate})
 
